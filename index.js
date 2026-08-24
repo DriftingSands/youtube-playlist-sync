@@ -15,7 +15,7 @@ const PLAYLISTS = [
 const DOWNLOAD_DIR = './downloads';
 const BATCH_SIZE = 10;
 const BATCH_DELAY_MS = 5000; // 5 second delay between batches
-const TEST_LIMIT = 25; // Set to null to disable, or number to limit songs
+const TEST_LIMIT = null; // Set to null to disable, or number to limit songs
 
 // ===== UTILITY FUNCTIONS =====
 
@@ -93,8 +93,8 @@ async function getExistingFiles(dir) {
     
     files.forEach(file => {
       // Extract videoId from filename: "name - artist [videoId].mp3"
-      const match = file.match(/\[([^\]]+)\]/);
-      if (match) existing.add(match[1]);
+      const match = file.match(/\[([^\]]+)\]\.mp3$/);
+      if (match) existing.add(match[1].replace(/.mp3$/, ''));
     });
 
     return existing;
@@ -104,7 +104,7 @@ async function getExistingFiles(dir) {
 }
 
 function escapeFilename(str) {
-  return str.replace(/[<>:"|?*]/g, '').replace(/\//g, '-').trim();
+  return String(str).replace(/[<>:"|?*]/g, '').replace(/\//g, '-').trim();
 }
 
 async function downloadVideo(videoId, title, artist, outputPath) {
