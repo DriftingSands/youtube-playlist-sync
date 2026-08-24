@@ -15,7 +15,7 @@ const PLAYLISTS = [
 const DOWNLOAD_DIR = './downloads';
 const BATCH_SIZE = 10;
 const BATCH_DELAY_MS = 5000; // 5 second delay between batches
-const TEST_LIMIT = 3; // Set to null to disable, or number to limit songs
+const TEST_LIMIT = 25; // Set to null to disable, or number to limit songs
 
 // ===== UTILITY FUNCTIONS =====
 
@@ -48,7 +48,7 @@ async function fetchPlaylistVideos(playlistId) {
     const videoData = await videoRes.json();
     const videoMap = {};
     videoData.items.forEach(item => {
-      videoMap[item.id] = item.snippet.channelTitle;
+      videoMap[item.id] = item.snippet.channelTitle.replace(' - Topic', '');
     });
 
     data.items.forEach(item => {
