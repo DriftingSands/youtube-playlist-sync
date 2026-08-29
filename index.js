@@ -18,6 +18,30 @@ const BATCH_SIZE = 10;
 const BATCH_DELAY_MS = 5000; // 5 second delay between batches
 const TEST_LIMIT = null; // Set to null to disable, or number to limit songs
 
+
+const USE_CACHE = false;
+
+async function getCachedPlaylistPath(playlistId) {
+  return path.join(DOWNLOAD_DIR, `.cache_${playlistId}.json`);
+}
+
+async function savePlaylistCache(playlistId, videos) {
+  const cachePath = await getCachedPlaylistPath(playlistId);
+  await fs.writeFile(cachePath, JSON.stringify(videos, null, 2), 'utf8');
+  console.log(`✓ Cached playlist`);
+}
+
+async function loadPlaylistCache(playlistId) {
+  const cachePath = await getCachedPlaylistPath(playlistId);
+  try {
+    const data = await fs.readFile(cachePath, 'utf8');
+    console.log(`✓ Loaded from cache`);
+    return JSON.parse(data);
+  } catch {
+    return null;
+  }
+}
+
 const failedDownloads = [];
 
 // ===== UTILITY FUNCTIONS =====
@@ -114,19 +138,30 @@ async function downloadVideo(videoId, title, artist, outputPath) {
   const fullPath = path.join(outputPath, filename);
 
   try {
-    await exec('yt-dlp', [
+    const { stdout, stderr } = await exec('yt-dlp', [
       '-x',
       '--audio-format', 'mp3',
       '--convert-thumbnails', 'jpg',
       '--embed-thumbnail',
       '--ppa', 'ThumbnailsConvertor+FFmpeg:-vf crop=ih:ih',
-      '--postprocessor-args', `FFmpegMetadata:-metadata title="${title}" -metadata artist="${artist}" -metadata album="${title}"`,
-      '--exec', 'ffmpeg -i {input} -metadata title="' + title + '" -metadata artist="' + artist + '" -metadata album="' + title + '" -c copy {output}',
+      // '--exec', `ffmpeg -i "{}" -metadata title="${title.replace(/"/g, '\\"')}" -metadata artist="${artist.replace(/"/g, '\\"')}" -metadata album="${title.replace(/"/g, '\\"')}"`,
       '-o', fullPath.replace('.mp3', '.%(ext)s'),
       `https://www.youtube.com/watch?v=${videoId}`
     ], {
-      stdio: ['pipe', 'pipe', 'pipe'] // suppress output
+      // stdio: ['pipe', 'pipe', 'pipe'] // suppress output
     });
+    await exec('ffmpeg', [
+      '-i', fullPath,
+      '-metadata', `title=${title.replace(/"/g, '\\"')}`,
+      '-metadata', `artist=${artist.replace(/"/g, '\\"')}`,
+      '-metadata', `album=${title.replace(/"/g, '\\"')}`,
+      '-c', 'copy',
+      fullPath.replace(/\.mp3$/, '.tmp.mp3'),
+    ]);
+    await exec('mv', [
+      fullPath.replace(/\.mp3$/, '.tmp.mp3'),
+      fullPath
+    ])
 
     console.log(`✓ Downloaded: ${filename}`);
     return { filename, success: true };
@@ -137,6 +172,7 @@ async function downloadVideo(videoId, title, artist, outputPath) {
     return { filename, success: false };
   }
 }
+
 
 async function createPlaylistFile(playlistDir, playlistName, videos) {
   const m3uPath = path.join(playlistDir, `_${escapeFilename(playlistName)}.m3u8`);
@@ -173,7 +209,19 @@ async function main() {
 
     // Fetch videos
     console.log('Fetching playlist videos...');
-    let videos = await fetchPlaylistVideos(playlist.id);
+    let videos;
+    if (USE_CACHE) {
+      videos = await loadPlaylistCache(playlist.id);
+      if (!videos) {
+        console.log('Cache miss, fetching from API...');
+        videos = await fetchPlaylistVideos(playlist.id);
+        await savePlaylistCache(playlist.id, videos);
+      }
+    } else {
+      console.log('Fetching from API...');
+      videos = await fetchPlaylistVideos(playlist.id);
+      await savePlaylistCache(playlist.id, videos);
+    }
     
     if (TEST_LIMIT) {
       videos = videos.slice(0, TEST_LIMIT);
