@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import path from 'path';
+import ignoremap from './ignoremap.js';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -17,9 +18,9 @@ const BATCH_SIZE = 10;
 const BATCH_DELAY_MS = 5000; // 5 second delay between batches
 const TEST_LIMIT = null; // Set to null to disable, or number to limit songs
 
+const failedDownloads = [];
+
 // ===== UTILITY FUNCTIONS =====
-
-
 async function fetchPlaylistVideos(playlistId) {
   const videos = [];
   let pageToken = '';
@@ -108,6 +109,7 @@ function escapeFilename(str) {
 }
 
 async function downloadVideo(videoId, title, artist, outputPath) {
+	console.log('videoId, title, artist, outputPath', videoId, title, artist, outputPath)
   const filename = `${escapeFilename(title)} - ${escapeFilename(artist)} [${videoId}].mp3`;
   const fullPath = path.join(outputPath, filename);
 
@@ -122,12 +124,15 @@ async function downloadVideo(videoId, title, artist, outputPath) {
       '--exec', 'ffmpeg -i {input} -metadata title="' + title + '" -metadata artist="' + artist + '" -metadata album="' + title + '" -c copy {output}',
       '-o', fullPath.replace('.mp3', '.%(ext)s'),
       `https://www.youtube.com/watch?v=${videoId}`
-    ]);
+    ], {
+      stdio: ['pipe', 'pipe', 'pipe'] // suppress output
+    });
 
     console.log(`✓ Downloaded: ${filename}`);
     return { filename, success: true };
   } catch (err) {
     console.error(`✗ Failed: ${filename}`);
+    failedDownloads.push({ filename, videoId, link: `https://www.youtube.com/watch?v=${videoId}` });
     console.error(err.message);
     return { filename, success: false };
   }
@@ -180,9 +185,17 @@ async function main() {
 
     // Get existing downloads
     const existing = await getExistingFiles(playlistDir);
-    const toDownload = videos.filter(v => !existing.has(v.videoId));
+    let toDownload = videos.filter(v => !existing.has(v.videoId));
+    let nrIgnored = 0;
+    toDownload = toDownload.filter(v => {
+      if (ignoremap[v.videoId]) {
+        nrIgnored++;
+        return false;
+      }
+      return true;
+    });
 
-    console.log(`Found ${videos.length} videos, ${toDownload.length} to download`);
+    console.log(`Found ${videos.length} videos, ${toDownload.length} to download (${nrIgnored} ignored)`);
 
     // Download in batches
     for (let i = 0; i < toDownload.length; i += BATCH_SIZE) {
@@ -203,6 +216,14 @@ async function main() {
     // Create playlist file
     console.log('\nCreating playlist file...');
     await createPlaylistFile(playlistDir, playlist.name, videos);
+
+    if (failedDownloads.length > 0) {
+      console.log('\nFailed downloads:');
+      for (const { filename, videoId, link } of failedDownloads) {
+        let text = `- ${filename} (${videoId}) - ${link}`;
+        console.log(`\x1b[31m${text}\x1b[0m`);
+      }
+    }
 
     console.log(`✓ Complete: ${playlist.name}`);
   }
