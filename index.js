@@ -4,6 +4,7 @@ import { promisify } from 'util';
 import path from 'path';
 import ignoremap from './ignoremap.js';
 import dotenv from 'dotenv';
+import { loadPlaylistCache, savePlaylistCache } from './utils/cache.js';
 dotenv.config();
 
 const exec = promisify(execFile);
@@ -21,26 +22,6 @@ const TEST_LIMIT = null; // Set to null to disable, or number to limit songs
 
 const USE_CACHE = false;
 
-async function getCachedPlaylistPath(playlistId) {
-  return path.join(DOWNLOAD_DIR, `.cache_${playlistId}.json`);
-}
-
-async function savePlaylistCache(playlistId, videos) {
-  const cachePath = await getCachedPlaylistPath(playlistId);
-  await fs.writeFile(cachePath, JSON.stringify(videos, null, 2), 'utf8');
-  console.log(`✓ Cached playlist`);
-}
-
-async function loadPlaylistCache(playlistId) {
-  const cachePath = await getCachedPlaylistPath(playlistId);
-  try {
-    const data = await fs.readFile(cachePath, 'utf8');
-    console.log(`✓ Loaded from cache`);
-    return JSON.parse(data);
-  } catch {
-    return null;
-  }
-}
 
 const failedDownloads = [];
 
@@ -212,11 +193,11 @@ async function main() {
     console.log('Fetching playlist videos...');
     let videos;
     if (USE_CACHE) {
-      videos = await loadPlaylistCache(playlist.id);
+      videos = await loadPlaylistCache(DOWNLOAD_DIR, playlist.id);
       if (!videos) {
         console.log('Cache miss, fetching from API...');
         videos = await fetchPlaylistVideos(playlist.id);
-        await savePlaylistCache(playlist.id, videos);
+        await savePlaylistCache(DOWNLOAD_DIR, playlist.id, videos);
       }
     } else {
       console.log('Fetching from API...');
