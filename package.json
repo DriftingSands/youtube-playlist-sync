@@ -9,6 +9,7 @@
   "keywords": [],
   "type": "module",
   "dependencies": {
-    "dotenv": "^17.4.2"
+    "dotenv": "^17.4.2",
+    "music-metadata": "^11.15.0"
   }
 }
