@@ -78,7 +78,7 @@ async function fetchPlaylistVideos(playlistId) {
 
     data.items.forEach(item => {
       videos.push({
-        title: item.snippet.title,
+        title: item.snippet.title.replaceAll('[', '(').replaceAll(']', ')'),
         videoId: item.contentDetails.videoId,
         channelName: videoMap[item.contentDetails.videoId], // Now the actual creator
         position: item.snippet.position
@@ -94,8 +94,9 @@ async function fetchPlaylistVideos(playlistId) {
 
 
 function parseVideoTitle(title, channelName) {
-  // Try to parse "Artist - Song Title" format
-  const match = title.match(/^(.+?)\s*-\s*(.+)$/);
+  // const match = title.match(/^(.+?)\s*-\s*(.+)$/);
+  // Try to parse "Artist - Song Title" format ignores - outside of brackets
+  const match = title.match(/^((?:[^()\-]|\([^)]*\))*)\s*-\s*(.+)$/);
   
   if (match) {
     return {
@@ -175,7 +176,7 @@ async function downloadVideo(videoId, title, artist, outputPath) {
 
 
 async function createPlaylistFile(playlistDir, playlistName, videos) {
-  const m3uPath = path.join(playlistDir, `_${escapeFilename(playlistName)}.m3u8`);
+  const m3uPath = path.join(DOWNLOAD_DIR, `${escapeFilename(playlistName)}.m3u8`);
   
   let m3uContent = '#EXTM3U\n';
 
@@ -189,7 +190,7 @@ async function createPlaylistFile(playlistDir, playlistName, videos) {
       await fs.access(fullPath);
       // File exists, add to playlist
       m3uContent += `#EXTINF:-1,${artist} - ${name}\n`;
-      m3uContent += `${filename}\n`;
+      m3uContent += `${escapeFilename(playlistName)}/${filename}\n`;
     } catch {
       // File doesn't exist, skip
     }
