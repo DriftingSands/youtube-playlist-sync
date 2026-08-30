@@ -11,9 +11,10 @@ import {
 	getExistingFiles,
 } from "./utils/videos.js";
 
-dotenv.config();
+dotenv.config({ path: '.env' });
 
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY; // See instructions below
+if (!YOUTUBE_API_KEY) throw new Error("YOUTUBE_API_KEY not set in .env file");
 const DOWNLOAD_DIR = "./downloads";
 const BATCH_SIZE = 10;
 const BATCH_DELAY_MS = 5000; // 5 second delay between batches
