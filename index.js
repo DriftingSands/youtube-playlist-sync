@@ -5,6 +5,7 @@ import path from 'path';
 import ignoremap from './ignoremap.js';
 import dotenv from 'dotenv';
 import { loadPlaylistCache, savePlaylistCache } from './utils/cache.js';
+import { prompt } from './utils/prompt.js';
 dotenv.config();
 
 const exec = promisify(execFile);
@@ -18,9 +19,6 @@ const DOWNLOAD_DIR = './downloads';
 const BATCH_SIZE = 10;
 const BATCH_DELAY_MS = 5000; // 5 second delay between batches
 const TEST_LIMIT = null; // Set to null to disable, or number to limit songs
-
-
-const USE_CACHE = false;
 
 
 const failedDownloads = [];
@@ -192,17 +190,17 @@ async function main() {
     // Fetch videos
     console.log('Fetching playlist videos...');
     let videos;
-    if (USE_CACHE) {
-      videos = await loadPlaylistCache(DOWNLOAD_DIR, playlist.id);
-      if (!videos) {
-        console.log('Cache miss, fetching from API...');
-        videos = await fetchPlaylistVideos(playlist.id);
-        await savePlaylistCache(DOWNLOAD_DIR, playlist.id, videos);
+    videos = await loadPlaylistCache(DOWNLOAD_DIR, playlist.id);
+    if (videos) {
+      const answer = await prompt('Previously saved playlist state found. Do you want to reuse it? (y/n)', ['y', 'n'], { '--use-cache': 'y', '--no-cache': 'n'});
+      if (answer === 'n') {
+        videos = null;
       }
-    } else {
+    }
+    if (!videos) {
       console.log('Fetching from API...');
       videos = await fetchPlaylistVideos(playlist.id);
-      await savePlaylistCache(playlist.id, videos);
+      await savePlaylistCache(DOWNLOAD_DIR, playlist.id, videos);
     }
     
     if (TEST_LIMIT) {
