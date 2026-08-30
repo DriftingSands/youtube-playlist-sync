@@ -1,18 +1,19 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import dotenv from "dotenv";
-import ignoremap from "./ignoremap.js";
 import { loadPlaylistCache, savePlaylistCache } from "./utils/cache.js";
 import { escapeFilename } from "./utils/names.js";
 import { prompt } from "./utils/prompt.js";
-import { createPlaylistFile, downloadVideo, fetchPlaylistVideos, getExistingFiles } from "./utils/videos.js";
+import {
+	createPlaylistFile,
+	downloadVideo,
+	fetchPlaylistVideos,
+	getExistingFiles,
+} from "./utils/videos.js";
 
 dotenv.config();
 
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY; // See instructions below
-const PLAYLISTS = [
-	{ id: "PLRlfwH0QYLHjkJjheoubsreDpl1giCzgc", name: "High Quality Music" },
-];
 const DOWNLOAD_DIR = "./downloads";
 const BATCH_SIZE = 10;
 const BATCH_DELAY_MS = 5000; // 5 second delay between batches
@@ -20,12 +21,47 @@ const TEST_LIMIT = null; // Set to null to disable, or number to limit songs
 
 const failedDownloads = [];
 
-// ===== MAIN =====
+async function getPlaylists() {
+	const playlists = [];
+	const content = await fs.readFile("playlists.txt", "utf8").catch(() => null);
+	if (!content) throw new Error("playlists.txt not found");
+
+	const lines = content.split("\n");
+	for (const line of lines) {
+		if (line.trim() === "") continue;
+		const separatorIndex = line.indexOf(" ");
+		if (separatorIndex === -1) throw new Error(`Invalid line: ${line}`);
+		playlists.push({
+			id: line.substring(0, separatorIndex),
+			name: line.substring(separatorIndex + 1),
+		});
+	}
+	return playlists;
+}
+
+async function getIgnoreMap() {
+	const content = await fs.readFile("ignore.txt", "utf8").catch(() => null);
+	if (!content) return {};
+	const lines = content.split("\n");
+	const ignoreMap = {};
+	for (const line of lines) {
+		if (line.trim() === "") continue;
+		const separatorIndex = line.indexOf(" ");
+		let videoId = line.trim();
+		if (separatorIndex > 0) {
+			videoId = line.substring(0, separatorIndex);
+		}
+		ignoreMap[videoId] = true;
+	}
+	return ignoreMap;
+}
 
 async function main() {
 	await fs.mkdir(DOWNLOAD_DIR, { recursive: true });
+	const playlists = await getPlaylists();
+	const ignoreMap = await getIgnoreMap();
 
-	for (const playlist of PLAYLISTS) {
+	for (const playlist of playlists) {
 		console.log(`\n=== Processing: ${playlist.name} ===`);
 
 		// Fetch videos
@@ -73,7 +109,7 @@ async function main() {
 		let toDownload = playlistItems.filter((item) => !item.existingFileName);
 		let nrIgnored = 0;
 		toDownload = toDownload.filter((v) => {
-			if (ignoremap[v.videoId]) {
+			if (ignoreMap[v.videoId]) {
 				nrIgnored++;
 				return false;
 			}
@@ -102,11 +138,12 @@ async function main() {
 					video.artist,
 					playlistDir,
 				);
-				if (!result.success) failedDownloads.push({
-					filename: result.escapeFilename,
-					videoId: video.videoId,
-					link: `https://www.youtube.com/watch?v=${video.videoId}`,
-				});
+				if (!result.success)
+					failedDownloads.push({
+						filename: result.escapeFilename,
+						videoId: video.videoId,
+						link: `https://www.youtube.com/watch?v=${video.videoId}`,
+					});
 			}
 		}
 

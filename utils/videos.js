@@ -151,5 +151,5 @@ export async function createPlaylistFile(
 	}
 
 	await fs.writeFile(m3uPath, m3uContent, "utf8");
-	console.log(`✓ Updated playlist: _${escapeFilename(playlistName)}.m3u8`);
+	console.log(`✓ Updated playlist: ${escapeFilename(playlistName)}.m3u8`);
 }
