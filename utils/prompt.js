@@ -1,4 +1,4 @@
-import * as readline from 'readline';
+import * as readline from "node:readline";
 
 export async function prompt(question, validAnswers = null, argMap = null) {
 	// Check for pre-answered argument
@@ -7,7 +7,9 @@ export async function prompt(question, validAnswers = null, argMap = null) {
 			if (process.argv.includes(arg)) {
 				// Validate the answer
 				if (validAnswers && !validAnswers.includes(value.toLowerCase())) {
-					console.log(`Invalid answer from argument. Valid options: ${validAnswers.join(', ')}`);
+					console.log(
+						`Invalid answer from argument. Valid options: ${validAnswers.join(", ")}`,
+					);
 					break; // Fall through to interactive prompt
 				}
 				return value;
@@ -25,7 +27,9 @@ export async function prompt(question, validAnswers = null, argMap = null) {
 		const askQuestion = () => {
 			rl.question(question, (answer) => {
 				if (validAnswers && !validAnswers.includes(answer.toLowerCase())) {
-					console.log(`Invalid answer. Valid options: ${validAnswers.join(', ')}`);
+					console.log(
+						`Invalid answer. Valid options: ${validAnswers.join(", ")}`,
+					);
 					askQuestion();
 					return;
 				}

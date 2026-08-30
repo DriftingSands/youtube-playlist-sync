@@ -1,15 +1,19 @@
 {
-  "name": "youtube-playlist-sync",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "sync": "node index.js"
-  },
-  "keywords": [],
-  "type": "module",
-  "dependencies": {
-    "dotenv": "^17.4.2",
-    "music-metadata": "^11.15.0"
-  }
+	"name": "youtube-playlist-sync",
+	"version": "1.0.0",
+	"description": "",
+	"main": "index.js",
+	"scripts": {
+		"sync": "node index.js",
+		"format": "biome check --write"
+	},
+	"keywords": [],
+	"type": "module",
+	"dependencies": {
+		"dotenv": "^17.4.2",
+		"music-metadata": "^11.15.0"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.5.11"
+	}
 }
