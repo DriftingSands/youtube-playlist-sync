@@ -109,7 +109,7 @@ export async function downloadVideo(videoId, title, album, artist, outputPath) {
 			"copy",
 			fullPath.replace(/\.mp3$/, ".tmp.mp3"),
 		]);
-		await exec("mv", [fullPath.replace(/\.mp3$/, ".tmp.mp3"), fullPath]);
+		await fs.rename(fullPath.replace(/\.mp3$/, ".tmp.mp3"), fullPath);
 
 		console.log(`✓ Downloaded: ${filename}`);
 		return { filename, success: true };

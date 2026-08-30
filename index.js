@@ -29,6 +29,7 @@ async function getPlaylists() {
 	const lines = content.split("\n");
 	for (const line of lines) {
 		if (line.trim() === "") continue;
+		if (line.trim().startsWith("#")) continue;
 		const separatorIndex = line.indexOf(" ");
 		if (separatorIndex === -1) throw new Error(`Invalid line: ${line}`);
 		playlists.push({
